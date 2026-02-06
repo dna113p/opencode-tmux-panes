@@ -1,0 +1,71 @@
+export interface SpawnPaneResult {
+  success: boolean
+  paneId?: string  // e.g., "%42"
+}
+
+export interface PaneDimensions {
+  paneWidth: number
+  windowWidth: number
+}
+
+export type SplitDirection = "-h" | "-v"
+
+export type TmuxLayout = 
+  | "main-vertical"
+  | "main-horizontal"
+  | "tiled"
+  | "even-horizontal"
+  | "even-vertical"
+
+export interface TmuxConfig {
+  enabled: boolean
+  layout: TmuxLayout
+  main_pane_size: number
+  main_pane_min_width: number
+  agent_pane_min_width: number
+}
+
+// Pane management types
+export interface TrackedSession {
+  sessionId: string
+  paneId: string
+  description: string
+  createdAt: Date
+  lastSeenAt: Date
+}
+
+export const MIN_PANE_WIDTH = 52
+export const MIN_PANE_HEIGHT = 11
+
+export interface TmuxPaneInfo {
+  paneId: string
+  width: number
+  height: number
+  left: number
+  top: number
+  title: string
+  isActive: boolean
+}
+
+export interface WindowState {
+  windowWidth: number
+  windowHeight: number
+  mainPane: TmuxPaneInfo | null
+  agentPanes: TmuxPaneInfo[]
+}
+
+export type PaneAction =
+  | { type: "close"; paneId: string; sessionId: string }
+  | { type: "spawn"; sessionId: string; description: string; targetPaneId: string; splitDirection: SplitDirection }
+  | { type: "replace"; paneId: string; oldSessionId: string; newSessionId: string; description: string }
+
+export interface SpawnDecision {
+  canSpawn: boolean
+  actions: PaneAction[]
+  reason?: string
+}
+
+export interface CapacityConfig {
+  mainPaneMinWidth: number
+  agentPaneWidth: number
+}
