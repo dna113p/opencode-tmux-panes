@@ -6,11 +6,6 @@ import { shouldSuppress } from "./suppression"
 import { isInsideTmux, getCurrentPaneId } from "./core/tmux-utils"
 import { log } from "./core/logger"
 
-// Re-export public API
-export { TmuxPanesConfigSchema, type TmuxPanesConfig } from "./config"
-export { shouldSuppress, type SessionInfo } from "./suppression"
-export { TmuxPaneManager } from "./manager"
-
 /**
  * Creates the opencode-tmux-panes plugin.
  * 
@@ -49,6 +44,33 @@ const tmuxPanesPlugin: Plugin = async (ctx: PluginInput) => {
   })
 
   log("[opencode-tmux-panes] manager created, registering hooks")
+
+  // Clean up orphaned panes from previous sessions on startup
+  await manager.cleanupOrphanedPanes()
+
+  // Register process exit handlers to clean up panes
+  const exitCleanup = () => {
+    log("[opencode-tmux-panes] process exit, cleaning up panes")
+    // Use synchronous cleanup since we're in an exit handler
+    manager.cleanupSync()
+  }
+
+  process.on("SIGTERM", () => {
+    log("[opencode-tmux-panes] SIGTERM received")
+    exitCleanup()
+    process.exit(0)
+  })
+
+  process.on("SIGINT", () => {
+    log("[opencode-tmux-panes] SIGINT received")
+    exitCleanup()
+    process.exit(0)
+  })
+
+  process.on("beforeExit", () => {
+    log("[opencode-tmux-panes] beforeExit")
+    exitCleanup()
+  })
 
   const sessionWatcher = createSessionWatcherHook({
     onSessionCreated: async (info) => {

@@ -14,6 +14,8 @@ import {
 } from "./core/action-executor"
 import { decideSpawnActions, decideCloseAction, type SessionMapping } from "./core/decision-engine"
 import { log } from "./core/logger"
+import { getCachedTmuxPath } from "./core/tmux-path"
+import { spawnSync } from "child_process"
 
 export interface TmuxPaneManagerDeps {
   isInsideTmux: () => boolean
@@ -246,5 +248,75 @@ export class TmuxPaneManager {
 
     await Promise.all(closePromises)
     this.sessions.clear()
+  }
+
+  /**
+   * Synchronous cleanup for use in process exit handlers where
+   * async operations are not reliable.
+   */
+  cleanupSync(): void {
+    if (this.sessions.size === 0) return
+
+    const tmux = getCachedTmuxPath()
+    if (!tmux) {
+      log("[TmuxPaneManager] cleanupSync: no cached tmux path")
+      return
+    }
+
+    log("[TmuxPaneManager] cleanupSync", { sessionCount: this.sessions.size })
+
+    for (const session of this.sessions.values()) {
+      try {
+        spawnSync(tmux, ["kill-pane", "-t", session.paneId], {
+          timeout: 2000,
+        })
+        log("[TmuxPaneManager] cleanupSync killed pane", { paneId: session.paneId })
+      } catch (err) {
+        log("[TmuxPaneManager] cleanupSync error", {
+          paneId: session.paneId,
+          error: String(err),
+        })
+      }
+    }
+
+    this.sessions.clear()
+  }
+
+  /**
+   * Clean up orphaned panes from previous plugin instances.
+   * Detects panes with titles matching "omo-subagent-*" that aren't
+   * tracked by this manager instance.
+   */
+  async cleanupOrphanedPanes(): Promise<void> {
+    if (!this.sourcePaneId) return
+
+    const state = await this.deps.queryWindowState(this.sourcePaneId)
+    if (!state) return
+
+    const orphanedPanes = state.agentPanes.filter(
+      (p) => p.title?.startsWith("omo-subagent-")
+    )
+
+    if (orphanedPanes.length === 0) return
+
+    log("[TmuxPaneManager] cleaning up orphaned panes", {
+      count: orphanedPanes.length,
+      panes: orphanedPanes.map((p) => ({ id: p.paneId, title: p.title })),
+    })
+
+    for (const pane of orphanedPanes) {
+      try {
+        await this.deps.executeAction(
+          { type: "close", paneId: pane.paneId, sessionId: "orphan" },
+          { config: this.getTmuxConfig(), serverUrl: this.serverUrl, windowState: state }
+        )
+        log("[TmuxPaneManager] orphaned pane closed", { paneId: pane.paneId })
+      } catch (err) {
+        log("[TmuxPaneManager] failed to close orphaned pane", {
+          paneId: pane.paneId,
+          error: String(err),
+        })
+      }
+    }
   }
 }

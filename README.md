@@ -64,6 +64,23 @@ await client.session.create({
 - `tmux` binary available in PATH
 - opencode >= 1.0.0
 
+## Development Setup
+
+To work on this plugin locally, build it and symlink the output into the opencode plugins directory:
+
+```bash
+# Install dependencies
+bun install
+
+# Build the plugin
+bun run build
+
+# Symlink into opencode's plugin directory
+ln -sf "$(pwd)/dist/index.js" ~/.config/opencode/plugins/opencode-tmux-panes.js
+```
+
+After making changes, rebuild with `bun run build` — the symlink means opencode will pick up the new build on next launch.
+
 ## Architecture
 
 The plugin uses a state-first approach:
