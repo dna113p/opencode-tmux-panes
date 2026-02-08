@@ -7,7 +7,11 @@ When running inside tmux, this plugin automatically spawns new panes for subagen
 ## Installation
 
 ```bash
-opencode plugin install opencode-tmux-panes
+git clone https://github.com/dna113p/opencode-tmux-panes.git
+cd opencode-tmux-panes
+bun install
+bun run build
+ln -sf "$(pwd)/dist/index.js" ~/.config/opencode/plugins/opencode-tmux-panes.js
 ```
 
 ## Usage
@@ -64,22 +68,15 @@ await client.session.create({
 - `tmux` binary available in PATH
 - opencode >= 1.0.0
 
-## Development Setup
+## Development
 
-To work on this plugin locally, build it and symlink the output into the opencode plugins directory:
+After making changes, rebuild with `bun run build` -- the symlink means opencode will pick up the new build on next launch.
 
 ```bash
-# Install dependencies
-bun install
-
-# Build the plugin
-bun run build
-
-# Symlink into opencode's plugin directory
-ln -sf "$(pwd)/dist/index.js" ~/.config/opencode/plugins/opencode-tmux-panes.js
+bun run build      # rebuild the plugin
+bun run typecheck  # check types
+bun test           # run tests
 ```
-
-After making changes, rebuild with `bun run build` — the symlink means opencode will pick up the new build on next launch.
 
 ## Architecture
 
